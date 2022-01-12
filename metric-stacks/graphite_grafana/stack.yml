@@ -1,0 +1,17 @@
+version: "3.6"
+services:
+  graphite:
+    # latest graphite has a bug in pyparsing; see https://github.com/graphite-project/graphite-web/issues/2726
+    # waiting for 1.1.9 release to fix it
+    image: graphiteapp/graphite-statsd:1.1.7-11
+    ports:
+      - "2013:2003"
+    healthcheck:
+      test: "curl -f http://localhost || exit 1"
+      timeout: 1s
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3010:3000"
+    volumes:
+      - ./grafana/mounts/etc/grafana:/etc/grafana

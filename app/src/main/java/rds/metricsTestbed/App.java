@@ -3,12 +3,105 @@
  */
 package rds.metricsTestbed;
 
+import io.micrometer.core.instrument.Clock;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import io.micrometer.opentsdb.OpenTSDBConfig;
+import io.micrometer.opentsdb.OpenTSDBMeterRegistry;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCustomizer;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.event.ApplicationStartedEvent;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
+
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.util.Random;
+
+@SpringBootApplication
+@EnableScheduling
 public class App {
-    public String getGreeting() {
-        return "Hello World!";
-    }
+    @Autowired
+    private Metrics metrics;
+
+    @Autowired
+    private CompositeMeterRegistry compositeMeterRegistry;
 
     public static void main(String[] args) {
-        System.out.println(new App().getGreeting());
+        SpringApplication.run(App.class, args);
+    }
+
+    @Bean
+    public Road road1() {
+        return new Road(metrics, 100, 2500);
+    }
+
+    private final String[] colors = {"black", "white", "red", "blue"};
+    private final Random random = new Random();
+
+    private String randomColor() {
+        return colors[random.nextInt(colors.length)];
+    }
+
+    private int randomCarSpeed() {
+        return random.nextInt(25) + 75;
+    }
+
+    private int randomCowSpeed() {
+        return random.nextInt(5) + 10;
+    }
+
+    private int randomCowPosition() {
+        // Anywhere along the road
+        return random.nextInt(2500);
+    }
+
+    @Scheduled(fixedRate = 2000)
+    public void dispatchCar() {
+        Car car = new Car(randomCarSpeed(), randomColor());
+        road1().add(car);
+    }
+
+    @Scheduled(fixedRate = 1000)
+    public void dispatchCow() {
+        Cow cow = new Cow(randomCowSpeed(), randomColor(), randomCowPosition());
+        road1().add(cow);
+    }
+
+    @Scheduled(fixedRate = 100)
+    public void tick() {
+        road1().tick();
+    }
+
+    @EventListener(ContextRefreshedEvent.class)
+    public void addOpentsdb() {
+        OpenTSDBConfig openTsdbConfig = new OpenTSDBConfig() {
+            @Override
+            public String get(String key) {
+                return null;
+            }
+
+            @Override
+            public int batchSize() {
+                return 100;
+            }
+
+            @Override
+            public String uri() {
+                return "http://localhost:4252/api/put";
+            }
+
+            @Override
+            public Duration step() {
+                return Duration.of(10, ChronoUnit.SECONDS);
+            }
+        };
+        OpenTSDBMeterRegistry registry = new OpenTSDBMeterRegistry(openTsdbConfig, Clock.SYSTEM);
+        compositeMeterRegistry.add(registry);
     }
 }

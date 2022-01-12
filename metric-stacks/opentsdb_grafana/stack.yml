@@ -1,0 +1,12 @@
+version: "3.6"
+services:
+    grafana:
+        image: grafana/grafana
+        ports:
+        - "127.0.0.1:3020:3000"
+        volumes:
+        - ./grafana/mounts/etc/grafana:/etc/grafana
+    opentsdb:
+        image: petergrace/opentsdb-docker
+        ports:
+        - "127.0.0.1:4252:4242"

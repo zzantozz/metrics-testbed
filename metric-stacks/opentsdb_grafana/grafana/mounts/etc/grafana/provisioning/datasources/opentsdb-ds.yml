@@ -1,0 +1,18 @@
+# Basic graphite datasource, taken from example at
+# https://grafana.com/docs/grafana/latest/administration/provisioning/#datasources
+
+apiVersion: 1
+
+deleteDatasources:
+  - name: OpenTSDB
+    orgId: 1
+
+datasources:
+  - name: OpenTSDB
+    isDefault: true
+    type: opentsdb
+    access: proxy
+    url: http://opentsdb:4242
+    jsonData:
+      tsdbResolution: 1
+      tsdbVersion: 1
